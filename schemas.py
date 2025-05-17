@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, validator
 import re
+from typing import List, Optional
 
 
 class UserBase(BaseModel):
@@ -17,7 +18,7 @@ class UserBase(BaseModel):
         description="User's complete name (2-100 characters)",
         example="John Smith"
     )
-    organization: str | None = Field(
+    organization: Optional[str] = Field(
         None,
         min_length=2,
         max_length=100,
@@ -25,7 +26,7 @@ class UserBase(BaseModel):
         description="User's company or organization (2-100 characters, optional)",
         example="Acme Corporation"
     )
-    role: str | None = Field(
+    role: Optional[str] = Field(
         None,
         min_length=2,
         max_length=100,
@@ -130,7 +131,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    email: str | None = Field(
+    email: Optional[str] = Field(
         None,
         title="Email",
         description="Email address extracted from the JWT token",
@@ -153,3 +154,27 @@ class UserLogin(BaseModel):
         description="User password (8-64 characters)",
         example="StrongP@ssw0rd"
     )
+
+# Sleep Classification Schemas
+class SleepClassificationResponse(BaseModel):
+    stage: int
+    stage_name: str
+    probabilities: List[float]
+
+
+class RawDataClassificationRequest(BaseModel):
+    data: List[float]
+    sampling_frequency: float = 100.0
+
+
+class EEGFileInfo(BaseModel):
+    channels: List[str]
+    sampling_frequency: float
+    duration_seconds: float
+    num_samples: int
+
+
+class SleepStageInfo(BaseModel):
+    id: int
+    name: str
+    description: str

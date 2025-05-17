@@ -81,3 +81,5 @@ coverage.xml
 node_modules/
 npm-debug.log
 yarn-error.log
+
+test_data/
