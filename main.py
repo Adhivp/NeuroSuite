@@ -266,50 +266,6 @@ async def classify_eeg_file(
             os.unlink(temp_file_path)
 
 
-@app.post("/eeg/classify-raw", response_model=schemas.SleepClassificationResponse, tags=["Sleep Classification"])
-def classify_raw_eeg_data(
-    data: schemas.RawDataClassificationRequest,
-    current_user: models.User = Security(auth.get_current_active_user)
-):
-    """
-    Classify sleep stage from raw EEG data array.
-    
-    Parameters:
-    - **data**: Array of EEG values
-    - **sampling_frequency**: Sampling frequency of the data in Hz (default: 100)
-    
-    Returns:
-    - **stage**: Predicted sleep stage index
-    - **stage_name**: Name of the predicted sleep stage
-    - **probabilities**: Probability scores for each sleep stage
-    """
-    try:
-        # Convert list to numpy array
-        eeg_array = np.array(data.data)
-        
-        # Classify sleep stage
-        stage, stage_name, probs = classify_sleep_stage(
-            eeg_array, 
-            model=deepsleep_model, 
-            sfreq=data.sampling_frequency
-        )
-        
-        # Convert numpy array to list for JSON serialization
-        probs_list = probs.tolist()
-        
-        return {
-            "stage": stage,
-            "stage_name": stage_name,
-            "probabilities": probs_list
-        }
-    
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error classifying EEG data: {str(e)}"
-        )
-
-
 @app.get("/eeg/file-info", response_model=schemas.EEGFileInfo, tags=["Sleep Classification"])
 async def get_eeg_file_info(
     file: UploadFile = File(...),
