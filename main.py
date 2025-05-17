@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware  # Add this import
 
 import models
 import schemas
@@ -17,6 +18,15 @@ app = FastAPI(
     title="NeuroSuite API",
     description="Backend API for NeuroSuite application",
     version="1.0.0",
+)
+
+# Add CORS middleware to allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 security = HTTPBearer()
