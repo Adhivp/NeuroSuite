@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from typing import List
 import uvicorn
-from fastapi.middleware.cors import CORSMiddleware  # Add this import
+from fastapi.middleware.cors import CORSMiddleware
 
 import models
 import schemas
@@ -16,7 +16,9 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="NeuroSuite API",
-    description="Backend API for NeuroSuite application",
+    description="""
+    Backend API for NeuroSuite application.
+    """,
     version="1.0.0",
 )
 
@@ -34,13 +36,21 @@ security = HTTPBearer()
 @app.post("/signup", response_model=schemas.UserResponse, tags=["Authentication"])
 def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """
-    Sign up a new user with the following information:
-    - Full Name
-    - Email Address
-    - Password (with strength validation)
-    - Organization (optional)
-    - Role / Job Title (optional)
-    - Agreement to Terms & Privacy Policy
+    Sign up a new user with the following requirements:
+    
+    - **Email**: Valid unique email address (required)
+    - **Full Name**: 2-100 characters (required)
+    - **Password**: 8-64 characters with complexity requirements (required):
+      - At least one uppercase letter
+      - At least one lowercase letter
+      - At least one digit
+      - At least one special character
+    - **Confirm Password**: Must match password exactly
+    - **Organization**: 2-100 characters (optional)
+    - **Role**: 2-100 characters (optional)
+    - **Terms Agreement**: Must be accepted (true)
+    
+    Returns the created user without sensitive information.
     """
     # Check if user with this email already exists
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
@@ -69,7 +79,15 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.post("/login", response_model=schemas.Token, tags=["Authentication"])
 def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     """
-    Login with email and password to receive access and refresh tokens
+    Login with email and password to receive access and refresh tokens.
+    
+    - **Email**: Registered email address (required)
+    - **Password**: User's password (required)
+    
+    Returns:
+    - **access_token**: JWT token for API authentication
+    - **refresh_token**: JWT token used to obtain a new access token
+    - **token_type**: Type of authentication token (bearer)
     """
     user = auth.authenticate_user(db, user_credentials.email, user_credentials.password)
     if not user:
@@ -91,7 +109,14 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
 @app.post("/refresh-token", response_model=schemas.Token, tags=["Authentication"])
 def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security), db: Session = Depends(get_db)):
     """
-    Get a new access token using a refresh token
+    Get a new access token using a refresh token.
+    
+    Provide your refresh token in the Authorization header with the Bearer prefix.
+    
+    Returns:
+    - **access_token**: New JWT token for API authentication
+    - **refresh_token**: New JWT token for future refresh operations
+    - **token_type**: Type of authentication token (bearer)
     """
     refresh_token = credentials.credentials
     payload = auth.get_token_payload(refresh_token)
@@ -125,7 +150,16 @@ def refresh_token(credentials: HTTPAuthorizationCredentials = Security(security)
 @app.get("/users/me", response_model=schemas.UserResponse, tags=["Users"])
 def read_users_me(current_user: models.User = Security(auth.get_current_active_user)):
     """
-    Get information about the currently authenticated user
+    Get information about the currently authenticated user.
+    
+    Requires a valid access token in the Authorization header.
+    
+    Returns the authenticated user's profile information:
+    - **id**: User ID
+    - **email**: Email address
+    - **full_name**: User's full name
+    - **organization**: User's organization (if provided)
+    - **role**: User's job title or role (if provided)
     """
     return current_user
 
@@ -133,7 +167,11 @@ def read_users_me(current_user: models.User = Security(auth.get_current_active_u
 @app.get("/health", tags=["Health"])
 def health_check():
     """
-    Health check endpoint to verify API is running
+    Health check endpoint to verify API is running.
+    
+    This endpoint does not require authentication.
+    
+    Returns a simple status message confirming the API is operational.
     """
     return {"status": "healthy", "service": "NeuroSuite API"}
 
