@@ -266,7 +266,7 @@ async def classify_eeg_file(
             os.unlink(temp_file_path)
 
 
-@app.get("/eeg/file-info", response_model=schemas.EEGFileInfo, tags=["Sleep Classification"])
+@app.post("/eeg/file-info", response_model=schemas.EEGFileInfo, tags=["General EEG Info"])
 async def get_eeg_file_info(
     file: UploadFile = File(...),
     current_user: models.User = Security(auth.get_current_active_user)
@@ -290,39 +290,29 @@ async def get_eeg_file_info(
         temp_file.write(content)
     
     try:
-        # Try to load the file using MNE
-        ext = os.path.splitext(file.filename)[1].lower()
-        
-        if ext == '.edf':
-            raw = mne.io.read_raw_edf(temp_file_path, preload=True)
-        elif ext == '.bdf':
-            raw = mne.io.read_raw_bdf(temp_file_path, preload=True)
-        elif ext in ['.fif', '.fiff']:
-            raw = mne.io.read_raw_fif(temp_file_path, preload=True)
-        elif ext == '.set':
-            raw = mne.io.read_raw_eeglab(temp_file_path, preload=True)
-        else:
-            # Try to load as generic binary format
-            raw = mne.io.read_raw(temp_file_path, preload=True)
-        
-        # Extract information
-        channels = raw.ch_names
-        sfreq = raw.info['sfreq']
-        duration = raw.n_times / sfreq
-        num_samples = raw.n_times
-        
-        return {
-            "channels": channels,
-            "sampling_frequency": sfreq,
-            "duration_seconds": duration,
-            "num_samples": num_samples
-        }
+        # Read the EDF file with MNE to get its properties
+        try:
+            raw = mne.io.read_raw_edf(temp_file_path, preload=False)
+            
+            # Extract the required information
+            channels = raw.ch_names
+            sampling_frequency = raw.info['sfreq']
+            duration_seconds = raw.n_times / sampling_frequency
+            num_samples = raw.n_times
+            
+            return {
+                "channels": channels,
+                "sampling_frequency": float(sampling_frequency),
+                "duration_seconds": float(duration_seconds),
+                "num_samples": int(num_samples)
+            }
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Could not parse EEG file: {str(e)}"
+            )
     
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Could not process the EEG file: {str(e)}"
-        )
     finally:
         # Clean up the temporary file
         if os.path.exists(temp_file_path):
